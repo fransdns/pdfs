@@ -3,7 +3,7 @@
 
 #define MyAppName "Editor de Boletas PDF"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "AO Digital"
+#define MyAppPublisher "fransdns de Hosaka Inc."
 #define MyAppExeName "EditorBoletasPDF.exe"
 
 [Setup]

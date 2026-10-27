@@ -3,6 +3,7 @@
 invoice_generator.py
 Sistema modular para extraer, editar y regenerar boletas de venta en PDF
 utilizando pdfplumber, Jinja2 y WeasyPrint.
+Editor / Publisher: fransdns de Hosaka Inc.
 """
 
 import os
@@ -10,6 +11,32 @@ import re
 import sys
 import argparse
 from typing import Dict, Any, Optional
+
+# --- Configuración de DLLs para Windows (Python 3.8+ / WeasyPrint / PyInstaller) ---
+if sys.platform == "win32":
+    rutas_dll_candidatas = []
+    # 1. Si está congelado por PyInstaller (--onedir o --onefile)
+    if getattr(sys, 'frozen', False):
+        base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+        rutas_dll_candidatas.append(base_dir)
+        rutas_dll_candidatas.append(os.path.join(base_dir, '_internal'))
+    else:
+        # 2. Rutas estándar de instalación de GTK3 Runtime en Windows
+        rutas_dll_candidatas.extend([
+            r"C:\Program Files\GTK3-Runtime Win64\bin",
+            r"C:\Program Files (x86)\GTK3-Runtime Win64\bin",
+            os.path.join(os.path.expanduser("~"), "GTK3-Runtime Win64", "bin"),
+        ])
+
+    for ruta in rutas_dll_candidatas:
+        if os.path.isdir(ruta):
+            os.environ['PATH'] = ruta + os.pathsep + os.environ.get('PATH', '')
+            os.environ['WEASYPRINT_DLL_DIRECTORIES'] = ruta
+            if hasattr(os, 'add_dll_directory'):
+                try:
+                    os.add_dll_directory(ruta)
+                except Exception:
+                    pass
 
 import pdfplumber
 import jinja2
@@ -423,6 +450,22 @@ def crear_template_base(template_path: str = "invoice_template.html") -> str:
         raise
 
 
+def calcular_totales(subtotal_str: str) -> tuple:
+    """
+    Calcula IL TAX (7.00%) y TOTAL en base al SUBTOTAL ingresado.
+    Fórmula: IL TAX = Subtotal * 0.07; TOTAL = Subtotal + IL TAX.
+    Retorna (subtotal_formateado, tax_formateado, total_formateado).
+    """
+    cleaned = re.sub(r'[^\d.]', '', str(subtotal_str or '0'))
+    try:
+        subtotal = float(cleaned)
+    except ValueError:
+        subtotal = 0.0
+    tax = round(subtotal * 0.07, 2)
+    total = round(subtotal + tax, 2)
+    return f"${subtotal:.2f}", f"${tax:.2f}", f"${total:.2f}"
+
+
 def limpiar_direccion_espaciado(texto: str) -> str:
     """
     Normaliza y asegura que las palabras y números de una dirección o nombre
@@ -582,22 +625,35 @@ def extraer_datos_pdf(pdf_path: str) -> Dict[str, Any]:
             except Exception:
                 pass
 
-            # 9. Item Description & Precios
-            m_item = re.search(r'(Apple[^\r\n]+)', text)
+            # 9. Item Description, QTY, Unit Price y Amount (100% dinámico para cualquier producto)
+            m_item = re.search(r'\n\s*([^\n]+?)\s+(\d+)\s+(\$[\d,.]+)\s+(\$[\d,.]+)\s*\n\s*Imei', text, re.IGNORECASE)
             if m_item:
-                raw_desc = m_item.group(1).strip()
-                cleaned_desc = re.sub(r'\s+\d+\s+\$[\d,.]+\s+\$[\d,.]+$', '', raw_desc)
-                if 'Apple Iphone' in text:
-                    datos["item_description"] = cleaned_desc
-                else:
-                    datos["item_description"] = "Apple Iphone 15 Pro Max A2849 256GB Blue Unlocked"
+                datos["item_description"] = m_item.group(1).strip()
+                datos["item_qty"] = m_item.group(2).strip()
+                datos["item_unit_price"] = m_item.group(3).strip()
+                datos["item_amount"] = m_item.group(4).strip()
+            else:
+                # Búsqueda alternativa en la tabla entre cabeceras y SUBTOTAL
+                m_between = re.search(r'(?:PRICE|NUMBER)\s*\n\s*([^\n]+?)(?:\s+(\d+)\s+(\$[\d,.]+)\s+(\$[\d,.]+))?\s*\n', text, re.IGNORECASE)
+                if m_between and m_between.group(1):
+                    raw_desc = m_between.group(1).strip()
+                    cleaned_desc = re.sub(r'\s+\d+\s+\$[\d,.]+\s+\$[\d,.]+$', '', raw_desc).strip()
+                    if cleaned_desc:
+                        datos["item_description"] = cleaned_desc
+                    if m_between.group(2): datos["item_qty"] = m_between.group(2).strip()
+                    if m_between.group(3): datos["item_unit_price"] = m_between.group(3).strip()
+                    if m_between.group(4): datos["item_amount"] = m_between.group(4).strip()
 
             # 10. Subtotal, Tax y Total
             m_sub = re.search(r'SUBTOTAL\s*(\$[\d,.]+)', text, re.IGNORECASE)
             if m_sub:
                 datos["subtotal"] = m_sub.group(1).strip()
+                if not datos.get("item_unit_price"):
+                    datos["item_unit_price"] = datos["subtotal"]
+                if not datos.get("item_amount"):
+                    datos["item_amount"] = datos["subtotal"]
 
-            m_tax = re.search(r'(IL\s*TAX\s*\([^)]+\))\s*(\$[\d,.]+)', text, re.IGNORECASE) or \
+            m_tax = re.search(r'(IL\s*TAX\s*(?:\([^)]+\))?)\s*(\$[\d,.]+)', text, re.IGNORECASE) or \
                     re.search(r'([A-Za-z ]*TAX\s*(?:\([^)]+\))?)\s*(\$[\d,.]+)', text, re.IGNORECASE)
             if m_tax:
                 datos["tax_label"] = m_tax.group(1).strip()
@@ -607,6 +663,13 @@ def extraer_datos_pdf(pdf_path: str) -> Dict[str, Any]:
             m_tot = re.search(r'(?<!SUB)\bTOTAL\s*(\$[\d,.]+)', text, re.IGNORECASE)
             if m_tot:
                 datos["total"] = m_tot.group(1).strip()
+
+            # Asegurar consistencia matemática automática (7% de IL TAX)
+            if datos.get("subtotal"):
+                s_fmt, tx_fmt, tot_fmt = calcular_totales(datos["subtotal"])
+                datos["subtotal"] = s_fmt
+                datos["tax_amount"] = tx_fmt
+                datos["total"] = tot_fmt
 
     except Exception as e:
         print(f"[ERROR] Error al procesar el archivo PDF '{pdf_path}': {e}", file=sys.stderr)

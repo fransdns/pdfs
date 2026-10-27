@@ -6,15 +6,53 @@ echo ================================================================
 echo   COMPILADOR AUTOMATICO A .EXE (Editor de Boletas PDF)
 echo ================================================================
 echo.
-echo Este script creara un archivo .EXE independiente y listo para usar
-echo que podras entregar directamente al usuario final.
+
+:: Detectar ejecutable de Python
+set "PYTHON_EXE="
+
+:: 1. Probar comando 'python'
+python -c "import sys; print(sys.version)" >nul 2>&1
+if %errorlevel% equ 0 set "PYTHON_EXE=python"
+
+:: 2. Probar lanzador oficial de Windows 'py'
+if not defined PYTHON_EXE (
+    py -c "import sys; print(sys.version)" >nul 2>&1
+    if %errorlevel% equ 0 set "PYTHON_EXE=py"
+)
+
+:: 3. Buscar en rutas estándar de instalación de Windows
+if not defined PYTHON_EXE (
+    for /d %%D in ("%LocalAppData%\Programs\Python\Python*") do (
+        if exist "%%D\python.exe" set "PYTHON_EXE=%%D\python.exe"
+    )
+)
+if not defined PYTHON_EXE (
+    for /d %%D in ("%ProgramFiles%\Python*") do (
+        if exist "%%D\python.exe" set "PYTHON_EXE=%%D\python.exe"
+    )
+)
+
+if not defined PYTHON_EXE (
+    echo [ERROR] No se encontro Python instalado en esta laptop.
+    echo.
+    echo Para solucionarlo:
+    echo  1. Ve a: https://www.python.org/downloads/
+    echo  2. Descarga e instala Python
+    echo  3. IMPORTANTE: Marca la casilla "[X] Add python.exe to PATH"
+    echo  4. Vuelve a ejecutar este archivo.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo [INFO] Python detectado correctamente: %PYTHON_EXE%
 echo.
 
 :: 1. Verificar instalacion de dependencias y PyInstaller
 echo [1/3] Verificando e instalando PyInstaller y requerimientos...
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install pyinstaller
+%PYTHON_EXE% -m pip install --upgrade pip
+%PYTHON_EXE% -m pip install -r requirements.txt
+%PYTHON_EXE% -m pip install pyinstaller
 
 if %errorlevel% neq 0 (
     echo.
@@ -29,7 +67,7 @@ echo [2/3] Compilando la aplicacion en un unico .EXE portable...
 echo       (Esto puede tardar un par de minutos, por favor espera...)
 echo.
 
-python -m PyInstaller --noconfirm --clean ^
+%PYTHON_EXE% -m PyInstaller --noconfirm --clean ^
     --name "EditorBoletasPDF" ^
     --windowed ^
     --onefile ^
