@@ -198,7 +198,45 @@
     top: 0;
     width: 325.0pt;
     font-size: 10.4pt;
-    line-height: 18.0pt;
+    line-height: 15.5pt;
+  }
+
+  .imei-row {
+    margin-top: 3.0pt;
+    position: relative;
+    height: 38.0pt;
+  }
+
+  .imei-col-1 {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 125.0pt;
+  }
+
+  .imei-col-2 {
+    position: absolute;
+    left: 133.5pt;
+    top: 0;
+    width: 125.0pt;
+  }
+
+  .imei-lbl {
+    font-size: 10.4pt;
+    line-height: 13.0pt;
+    white-space: nowrap;
+  }
+
+  .barcode-box {
+    margin-top: 1.5pt;
+    width: 100.5pt;
+    height: 22.0pt;
+  }
+
+  .barcode-box svg {
+    width: 100.5pt;
+    height: 22.0pt;
+    display: block;
   }
 
   .item-qty-val {
@@ -226,10 +264,10 @@
     text-align: right;
   }
 
-  /* Línea inferior tras los items (con espacio suficiente para no chocar con Serial Number) */
+  /* Línea inferior tras los items (con espacio suficiente para no chocar con códigos de barra) */
   .divider-table-bottom {
     position: absolute;
-    top: 418.0pt;
+    top: 432.0pt;
     left: 54.3pt;
     width: 504.2pt;
     height: 0.92pt;
@@ -239,7 +277,7 @@
   /* Bloque de Totales */
   .totals-block {
     position: absolute;
-    top: 423.0pt;
+    top: 437.0pt;
     right: 52.8pt;
     width: 204.5pt;
   }
@@ -291,20 +329,20 @@
   /* Cuadro de Información Bancaria */
   .bank-details-box {
     position: absolute;
-    top: 494.1pt;
+    top: 518.0pt;
     left: 53.25pt;
     width: 504.45pt;
-    height: 92.25pt;
+    height: 86.0pt;
     border: 1px solid #2b2b2f;
-    padding: 10.0pt 11.6pt;
+    padding: 7.0pt 11.6pt;
     font-size: 10.45pt;
-    line-height: 13.4pt;
+    line-height: 12.8pt;
   }
 
   /* Pie de página */
   .thank-you-text {
     position: absolute;
-    top: 626.1pt;
+    top: 616.0pt;
     left: 0;
     width: 612.0pt;
     text-align: center;
@@ -312,9 +350,24 @@
     letter-spacing: 0.5pt;
   }
 
+  .qr-code-box {
+    position: absolute;
+    top: 636.0pt;
+    left: 254.75pt;
+    width: 102.5pt;
+    height: 102.5pt;
+    text-align: center;
+  }
+
+  .qr-code-img {
+    width: 102.5pt;
+    height: 102.5pt;
+    display: block;
+  }
+
   .page-number {
     position: absolute;
-    top: 761.2pt;
+    top: 760.0pt;
     right: 54.0pt;
     font-size: 10.4pt;
   }
@@ -384,10 +437,19 @@
   <!-- Filas de la Tabla (Detalles del Equipo) -->
   <div class="item-content">
     <div class="item-desc">
-      <div>{{ item_description|default('Apple Iphone 15 Pro Max A2849 256GB Blue Unlocked') }}</div>
-      <div>Imei1:{{ imei1 }} / Imei2:{{ imei2 }}</div>
+      <div>{{ item_description|default('Apple Iphone 15 Pro Max A2849 512GB Natural Unlocked') }}</div>
       <div>Model: {{ model }}</div>
       <div>Serial Number: {{ serial_number }}</div>
+      <div class="imei-row">
+        <div class="imei-col-1">
+          <div class="imei-lbl">IMEI1: {{ imei1 }}</div>
+          <div class="barcode-box">{{ barcode1_svg|safe }}</div>
+        </div>
+        <div class="imei-col-2">
+          <div class="imei-lbl">IMEI2: {{ imei2 }}</div>
+          <div class="barcode-box">{{ barcode2_svg|safe }}</div>
+        </div>
+      </div>
     </div>
     <div class="item-qty-val">{{ item_qty|default('1') }}</div>
     <div class="item-price-val">{{ item_unit_price|default('$773.50') }}</div>
@@ -419,11 +481,17 @@
     {{ bank_line_2|default('Account Name: AO Digital, Inc.') }}<br>
     {{ bank_line_3|default('Account Number: 291040780652') }}<br>
     {{ bank_line_4|default('ABA/Routing Number: 026009593 (wires)') }}<br>
-    {{ bank_line_5|default('SWIFT Code: BOFAUS3N') }}
+    {{ bank_line_5|default('SWIFT Code: BOFAUS3N') }}<br>
+    {{ bank_line_6|default('Contact us : aodigitalcraftus@gmail.com') }}
   </div>
 
   <!-- Mensaje de Agradecimiento -->
   <div class="thank-you-text">{{ thank_you_text|default('THANK YOU') }}</div>
+
+  <!-- Código QR Fijo Oficial -->
+  <div class="qr-code-box">
+    <img src="{{ qr_code_src }}" class="qr-code-img" alt="QR Code">
+  </div>
 
   <!-- Número de Página -->
   <div class="page-number">{{ page_info|default('Page 1 of 1') }}</div>

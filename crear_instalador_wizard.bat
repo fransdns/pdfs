@@ -114,6 +114,7 @@ if exist "dist\EditorBoletasPDF" rmdir /s /q "dist\EditorBoletasPDF"
     --windowed ^
     --onedir ^
     --add-data "invoice_template.html;." ^
+    --add-data "qr_code.png;." ^
     --add-binary "%GTK_BIN%\*.dll;." ^
     --collect-all weasyprint ^
     --collect-all pdfplumber ^

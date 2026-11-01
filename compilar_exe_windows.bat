@@ -72,6 +72,7 @@ echo.
     --windowed ^
     --onefile ^
     --add-data "invoice_template.html;." ^
+    --add-data "qr_code.png;." ^
     --collect-all weasyprint ^
     --collect-all pdfplumber ^
     gui_app.py

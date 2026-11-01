@@ -415,6 +415,15 @@ class InvoiceEditorApp(tk.Tk):
         _crear_campo(group_prod, 2, 0, "IMEI 1 (15 dígitos):", self.var_imei1)
         _crear_campo(group_prod, 2, 1, "IMEI 2 (15 dígitos):", self.var_imei2)
 
+        lbl_barcode_info = tk.Label(
+            group_prod,
+            text="★ Los códigos de barras Code 128 y el código QR se generan/actualizan automáticamente en el PDF.",
+            font=("Helvetica", 9, "italic"),
+            fg="#059669",
+            bg="#ffffff"
+        )
+        lbl_barcode_info.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=6, pady=(4, 2))
+
         # --- GRUPO C: FACTURA, PRECIOS E IMPUESTOS (CÁLCULO AUTOMÁTICO 7%) ---
         group_prices = tk.LabelFrame(
             card_fields,
